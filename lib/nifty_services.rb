@@ -1,10 +1,10 @@
+require 'logger'
+
 require 'nifty_services/version'
-require 'active_support/core_ext/object/blank'
-require 'active_support/core_ext/hash/keys'
-require 'active_support/core_ext/string/inflections'
+require 'nifty_services/support/hash'
+require 'nifty_services/support/string'
 
 module NiftyServices
-
   autoload :BaseService,        'nifty_services/base_service'
   autoload :BaseActionService,  'nifty_services/base_action_service'
   autoload :BaseCrudService,    'nifty_services/base_crud_service'
@@ -17,11 +17,12 @@ module NiftyServices
   autoload :Util,               'nifty_services/util'
 
   module Extensions
-    autoload :CallbacksInterface, 'nifty_services/extensions/callbacks_interface'
+    autoload :CallbacksInterface,
+             'nifty_services/extensions/callbacks_interface'
   end
 
   class << self
-    def configuration(&block)
+    def configuration
       @configuration ||= Configuration.new
 
       yield(@configuration) if block_given?
@@ -29,6 +30,6 @@ module NiftyServices
       @configuration
     end
 
-    alias :config :configuration
+    alias config configuration
   end
 end

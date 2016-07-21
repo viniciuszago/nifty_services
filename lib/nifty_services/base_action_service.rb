@@ -1,6 +1,5 @@
 module NiftyServices
   class BaseActionService < BaseService
-
     def self.action_name(action_name, options={})
       define_method :action_name do
         action_name
@@ -17,23 +16,28 @@ module NiftyServices
             success_response
           else
             errors = action_errors
-            bad_request_error(errors) if errors.present?
+            bad_request_error(errors) unless errors.empty?
           end
         end
       end
     end
 
     private
+
     def action_errors
       []
     end
 
     def can_execute?
       unless user_can_execute_action?
-        return (valid? ? unprocessable_entity_error!(invalid_action_error_key) : false)
+        if valid?
+          return unprocessable_entity_error!(invalid_action_error_key)
+        else
+          return false
+        end
       end
 
-      return true
+      true
     end
 
     def invalid_action_error_key

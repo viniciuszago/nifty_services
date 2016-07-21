@@ -793,7 +793,7 @@ my_app:
 ## Callbacks
 
 Here the most common callbacks list you can use to hook actions in run-time:
-(**Hint**: See all existent callbacks definitions in [`extensions/callbacks_interface.rb`](lib/nifty_services/extensions/callbacks_interface.rb#L8-L24) file)
+(**Hint**: See all existent callbacks definitions in [`extensions/callbacks.rb`](lib/nifty_services/extensions/callbacks.rb#L7-L22) file)
 
 ```
   - before_initialize
@@ -1260,7 +1260,6 @@ Currently NiftyServices don't have CLI(command line interface) generators, but i
 
 ## :calendar: Roadmap <a name="roadmap"></a>
 
-- :white_medium_small_square: Remove ActiveSupport dependency
 - :white_medium_small_square: Create CLI Generators
 - :white_medium_small_square: Beter documentation for `BaseActionService`
 - :white_medium_small_square: Write Sample Applications

@@ -1,6 +1,5 @@
 module NiftyServices
   class BaseUpdateService < BaseCrudService
-
     def execute
       execute_action do
         with_before_and_after_callbacks(:update) do
@@ -13,7 +12,7 @@ module NiftyServices
               success_response
             else
               errors = update_errors
-              bad_request_error(errors) if errors.present?
+              bad_request_error(errors) unless errors.empty?
             end
           end
         end
@@ -22,7 +21,9 @@ module NiftyServices
 
     def changed_attributes
       return [] if fail?
-      @changed_attributes ||= changes(@last_record, @record, changed_attributes_array)
+      @changed_attributes ||= changes(@last_record,
+                                      @record,
+                                      changed_attributes_array)
     end
 
     private
@@ -44,15 +45,13 @@ module NiftyServices
     end
 
     def can_execute?
-      unless valid_record?
-        return not_found_error!(invalid_record_error_key)
-      end
+      return not_found_error!(invalid_record_error_key) unless valid_record?
 
       if validate_user? && !valid_user?
         return not_found_error!(invalid_user_error_key)
       end
 
-      return true
+      true
     end
 
     def can_update_record?
@@ -60,15 +59,17 @@ module NiftyServices
         return (valid? ? forbidden_error!(user_cant_update_error_key) : false)
       end
 
-      return true
+      true
     end
 
     def can_execute_action?
-      return can_update_record?
+      can_update_record?
     end
 
     def user_can_update_record?
-      return not_implemented_exception(__method__) unless @record.respond_to?(:user_can_update?)
+      unless @record.respond_to?(:user_can_update?)
+        return not_implemented_exception(__method__)
+      end
 
       @record.user_can_update?(@user)
     end
@@ -84,6 +85,5 @@ module NiftyServices
     def user_cant_update_error_key
       "#{record_error_key}.user_cant_update"
     end
-
   end
 end

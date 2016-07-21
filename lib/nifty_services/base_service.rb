@@ -1,14 +1,15 @@
+require File.expand_path('extensions/callbacks', File.dirname(__FILE__))
+require 'i18n'
+
 module NiftyServices
   class BaseService
-
-    include Extensions::CallbacksInterface
-
     attr_reader :response_status, :response_status_code
     attr_reader :options, :errors, :logger
 
     class << self
       def register_error_response_method(reason_string, status_code)
-        NiftyServices::Configuration.add_response_error_method(reason_string, status_code)
+        NiftyServices::Configuration.add_response_error_method(reason_string,
+                                                               status_code)
         define_error_response_method(reason_string, status_code)
       end
 
@@ -26,9 +27,10 @@ module NiftyServices
     end
 
     def initialize(options = {}, initial_response_status = 400)
-      @options = default_options.to_options!.merge(options).to_options!
+      @options = with_default_options(options)
       @errors = []
       @logger = @options[:logger] || default_logger
+
       @executed = false
 
       with_before_and_after_callbacks(:initialize) do
@@ -41,7 +43,7 @@ module NiftyServices
     end
 
     def valid?
-      return @errors.blank?
+      @errors.empty?
     end
 
     def success?
@@ -59,7 +61,7 @@ module NiftyServices
     def valid_user?
       user_class = NiftyServices.config.user_class
 
-      raise 'Invalid User class. Use NitfyService.config.user_class = ClassName' if user_class.blank?
+      raise Errors::InvalidUser if user_class.nil?
 
       valid_object?(@user, user_class)
     end
@@ -69,7 +71,7 @@ module NiftyServices
     end
 
     def option_enabled?(key)
-      option_exists?(key) && @options[key.to_sym] == true
+      option_exists?(key) && [true, 'true'].member?(@options[key.to_sym])
     end
 
     def option_disabled?(key)
@@ -85,15 +87,20 @@ module NiftyServices
       NiftyServices.config.logger
     end
 
-    alias :log :logger
+    alias log logger
 
     def executed?
       @executed == true
     end
 
-    alias :runned? :executed?
+    alias runned? executed?
 
     private
+
+    def with_default_options(options)
+      default_options.merge(options).symbolize_keys
+    end
+
     def default_options
       {}
     end
@@ -103,21 +110,15 @@ module NiftyServices
     end
 
     def execute_action(&block)
-      begin
-        return nil if executed?
+      return nil if executed?
 
-        with_before_and_after_callbacks(:execute) do
-          if can_execute?
-            yield(block) if block_given?
-          end
+      with_before_and_after_callbacks(:execute) do
+        if can_execute?
+          yield(block) if block_given?
         end
-
-        @executed = true
-      rescue Exception => e
-        add_error(e)
       end
 
-      self # allow chaining
+      @executed = true
     end
 
     def success_response(status = :ok)
@@ -148,12 +149,8 @@ module NiftyServices
 
       response_list = error_list.merge(success_list)
 
-      selected_status = response_list.select do |status_key, status_code|
-        if select_method == :key
-          status_key == status
-        else
-          status_code == status
-        end
+      response_list.select do |status_key, status_code|
+        status == (select_method == :key ? status_key : status_code)
       end
     end
 
@@ -181,30 +178,29 @@ module NiftyServices
     def error!(status, message_key, options = {})
       error(status, message_key, options)
 
-      # TODO:
-      # maybe throw a Exception making bang(!) semantic
+      # TODO: maybe throw a Exception making bang(!) semantic
       # raise "NiftyServices::V1::Exceptions::#{status.titleize}".constantize
-      return false
+      false
     end
 
     def valid_object?(record, expected_class)
-      record.present? && record.is_a?(expected_class)
+      record.class.to_s == expected_class.to_s
     end
 
-    def filter_hash(hash, whitelist_keys = [])
-      (hash || {}).symbolize_keys.slice(*whitelist_keys.map(&:to_sym))
+    def filter_hash(hash = {}, whitelist_keys = [])
+      hash.symbolize_keys.slice(*whitelist_keys.map(&:to_sym))
     end
 
     def changes(old, current, attributes = {})
       changes = []
 
-      return changes if old.blank? || current.blank?
+      return changes if old.nil? || current.nil?
 
       old_attributes = old.attributes.slice(*attributes.map(&:to_s))
       new_attributes = current.attributes.slice(*attributes.map(&:to_s))
 
       new_attributes.each do |attribute, value|
-        changes << attribute if (old_attributes[attribute] != value)
+        changes << attribute if old_attributes[attribute] != value
       end
 
       changes.map(&:to_sym)
@@ -224,7 +220,7 @@ module NiftyServices
       elsif message_key.is_a?(Array) && message_key.first.is_a?(Hash)
         message = message_key
       else
-        message = I18n.t("#{i18n_errors_namespace}.#{message_key}", options)
+        message = translate("#{i18n_errors_namespace}.#{message_key}", options)
       end
 
       message
@@ -236,7 +232,16 @@ module NiftyServices
 
     protected
     def not_implemented_exception(method_name)
-      raise NotImplementedError, "#{method_name} must be implemented in subclass"
+      raise NotImplementedError,
+            "#{method_name} must be implemented in subclass"
+    end
+
+    def translate(key, options = {})
+      begin
+        I18n.t(key, options)
+      rescue => error
+        "Can't fecth key #{key} - #{error.message}"
+      end
     end
   end
 end

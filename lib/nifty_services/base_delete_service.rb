@@ -1,21 +1,18 @@
 module NiftyServices
   class BaseDeleteService < BaseCrudService
-
     def execute
       execute_action do
         with_before_and_after_callbacks(:delete) do
           if can_execute_action?
-            if destroy_record
-              success_response
-            else
-              bad_request_error(@record.errors)
-            end
+            errors = @record.errors
+            destroy_record ? success_response : bad_request_error(errors)
           end
         end
       end
     end
 
     private
+
     def destroy_record
       @record.try(:destroy) || @record.try(:delete)
     end
@@ -29,7 +26,7 @@ module NiftyServices
         return not_found_error!(invalid_user_error_key)
       end
 
-      return true
+      true
     end
 
     def can_delete_record?
@@ -37,15 +34,17 @@ module NiftyServices
         return (valid? ? forbidden_error!(user_can_delete_error_key) : false)
       end
 
-      return true
+      true
     end
 
     def can_execute_action?
-      return can_delete_record?
+      can_delete_record?
     end
 
     def user_can_delete_record?
-      return not_implemented_exception(__method__) unless @record.respond_to?(:user_can_delete?)
+      unless @record.respond_to?(:user_can_delete?)
+        return not_implemented_exception(__method__)
+      end
 
       @record.user_can_delete?(@user)
     end

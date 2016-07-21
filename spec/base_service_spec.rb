@@ -1,18 +1,22 @@
 require 'spec_helper'
 require 'pry'
 
-RSpec.describe NiftyServices::BaseService, type: :service do
+class Dummy
+end
 
-  it { expect(subject.valid?).to be_truthy }
+RSpec.describe NiftyServices::BaseService, type: :service do
+  it { expect(subject.valid?).to be true }
 
   it 'must have error handle methods' do
-    NiftyServices::Configuration.response_errors_list.each do |method, response_status|
-      expect(subject.respond_to?("#{method}_error", true)).to be_truthy
+    NiftyServices::Configuration.response_errors_list
+                                .each do |method, response_status|
+      expect(response_status).not_to be nil
+      expect(subject.respond_to?("#{method}_error", true)).to be true
     end
   end
 
   it 'must call callback after initialize' do
-    expect(subject.callback_fired?(:after_initialize)).to be_truthy
+    expect(subject.callback_fired?(:after_initialize)).to be true
   end
 
   context 'register and fire new callbacks for instance callbacks' do
@@ -31,19 +35,27 @@ RSpec.describe NiftyServices::BaseService, type: :service do
       subject.send(:success_response)
     end
 
-    it { expect(subject.callback_fired?(:do_actions_before_success)).to be_truthy }
-    it { expect(subject.callback_fired?(:do_actions_after_success)).to be_truthy }
+    it do
+      response = subject.callback_fired?(:do_actions_before_success)
+      expect(response).to be true
+    end
+    it do
+      response = subject.callback_fired?(:do_actions_after_success)
+      expect(response).to be true
+    end
   end
 
   it 'must propagate callbacks to children services' do
-    NiftyServices::BaseCreateService.register_callback(:after_success, :write_to_log) do
-      # puts 'All classes that inherit from NiftyServices::BaseCreateService will call this callback'
+    NiftyServices::BaseCreateService.register_callback(:after_success,
+                                                       :write_to_log) do
+      # puts 'All classes that inherit from
+      #  NiftyServices::BaseCreateService will call this callback'
     end
 
     service = NiftyServices::BaseCreateService.new(Object.new)
     service.send(:success_response)
 
-    expect(service.callback_fired?(:write_to_log)).to be_truthy
+    expect(service.callback_fired?(:write_to_log)).to be true
   end
 
   context 'call before and after callbacks after success response' do
@@ -61,16 +73,15 @@ RSpec.describe NiftyServices::BaseService, type: :service do
   end
 
   context 'call callbacks before and after error' do
-
     it do
       expect { subject.send(:not_authorized_error, 'spec') }.to change {
-       subject.callback_fired?(:before_error)
+        subject.callback_fired?(:before_error)
       }.from(false).to(true)
     end
 
     it do
       expect { subject.send(:not_authorized_error, 'spec') }.to change {
-       subject.callback_fired?(:after_error)
+        subject.callback_fired?(:after_error)
       }.from(false).to(true)
     end
   end
@@ -80,7 +91,10 @@ RSpec.describe NiftyServices::BaseService, type: :service do
       subject.send(:not_authorized_error, '__not_existent_key__')
     end
 
-    it { expect(subject.errors.last).to match(NiftyServices::Configuration::DEFAULT_I18N_NAMESPACE) }
+    it do
+      namespace = NiftyServices::Configuration::DEFAULT_I18N_NAMESPACE
+      expect(subject.errors.last).to match(namespace)
+    end
   end
 
   context 'change response_status when error method is called' do
@@ -126,13 +140,16 @@ RSpec.describe NiftyServices::BaseService, type: :service do
   end
 
   context 'have method to check if options value is enabled/disabled' do
-    subject { NiftyServices::BaseService.new(send_push_notification: true, create_users: false) }
+    subject do
+      NiftyServices::BaseService.new(send_push_notification: true,
+                                     create_users: false)
+    end
 
-    it { expect(subject.option_enabled?(:send_push_notification)).to be_truthy }
-    it { expect(subject.option_enabled?(:create_users)).to be_falsey }
+    it { expect(subject.option_enabled?(:send_push_notification)).to be true }
+    it { expect(subject.option_enabled?(:create_users)).to be false }
 
-    it { expect(subject.option_disabled?(:send_push_notification)).to be_falsey }
-    it { expect(subject.option_disabled?(:create_users)).to be_truthy }
+    it { expect(subject.option_disabled?(:send_push_notification)).to be false }
+    it { expect(subject.option_disabled?(:create_users)).to be true }
   end
 
   context 'have generic error method do create new errors' do
@@ -150,12 +167,12 @@ RSpec.describe NiftyServices::BaseService, type: :service do
 
     it do
       subject.send(:error, 422, 'unprocessable_entity')
-      expect(subject.errors.last).to match /unprocessable_entity$/
+      expect(subject.errors.last).to match(/unprocessable_entity/)
     end
   end
 
   context 'return false when error bang method is called' do
-    it { expect(subject.send(:not_found_error!, 'spec')).to be_falsey }
+    it { expect(subject.send(:not_found_error!, 'spec')).to be false }
     it { expect(subject.send(:not_found_error, 'spec')).to be_a(String) }
   end
 
@@ -176,7 +193,7 @@ RSpec.describe NiftyServices::BaseService, type: :service do
 
     context 'when call fail?' do
       before { subject.send(:success_response) }
-      it { expect(subject.fail?).to be_falsey }
+      it { expect(subject.fail?).to be false }
     end
   end
 
@@ -194,8 +211,8 @@ RSpec.describe NiftyServices::BaseService, type: :service do
         subject.send(:success_response)
       end
 
-      it { expect(subject.success?).to be_falsey }
-      it { expect(subject.fail?).to be_truthy }
+      it { expect(subject.success?).to be false }
+      it { expect(subject.fail?).to be true }
     end
   end
 
@@ -213,7 +230,12 @@ RSpec.describe NiftyServices::BaseService, type: :service do
     expect(error).not_to be == 'Not authorized'
     expect(error).to match(/translation missing/)
 
-    I18n.backend.store_translations current_locale, :nifty_services => { :errors => { 'teste_spec' => 'Not authorized' } }
+    I18n.backend.store_translations current_locale,
+                                    nifty_services: {
+                                      errors: {
+                                        'teste_spec' => 'Not authorized'
+                                      }
+                                    }
 
     error = subject.send(:not_authorized_error, 'teste_spec')
 
@@ -227,17 +249,17 @@ RSpec.describe NiftyServices::BaseService, type: :service do
     error = subject.send(:bad_request_error, errors)
 
     expect(error).to be_a(Hash)
-    expect(subject.errors.last).to be == { test: [ 'not valid' ] }
+    expect(subject.errors.last).to be == { test: errors_array }
 
     errors.add('test', 'not valid again')
 
-    expect(subject.errors.last).to be == { test: [ 'not valid', 'not valid again' ] }
+    expect(subject.errors.last).to be == { test: errors_array }
   end
 
   it 'must handle when array of hash is provided to error method' do
     errors = [
       {
-        email: 'email not_valid',
+        email: 'email not_valid'
       },
       {
         username: 'username already been taken'
@@ -249,19 +271,51 @@ RSpec.describe NiftyServices::BaseService, type: :service do
   end
 
   context 'have method to validate objects classes and presence' do
-    it { expect(subject.send(:valid_object?, { } , Hash)).to be_falsey }
-    it { expect(subject.send(:valid_object?, { key: :value } , Hash)).to be_truthy }
+    it { expect(subject.send(:valid_object?, {}, Hash)).to be true }
 
-    it { expect(subject.send(:valid_object?, [] , Hash)).to be_falsey }
-    it { expect(subject.send(:valid_object?, { key: :value } , Array)).to be_falsey }
+    it { expect(subject.send(:valid_object?, [], Hash)).to be false }
   end
 
   context 'clear invalid hash keys' do
     let(:whitelist) { [:name, :age] }
-    let(:hash) { { name: 'Tom Rowlands' , email: 'tom@thechemicalbrothers.com', age: 44 } }
+    let(:hash) do
+      {
+        name: 'Tom Rowlands',
+        email: 'tom@thechemicalbrothers.com',
+        age: 44
+      }
+    end
     let(:filtered_hash) { subject.send(:filter_hash, hash, whitelist) }
 
     it { expect(filtered_hash.keys).to match_array(whitelist) }
     it { expect(filtered_hash[:email]).to be_nil }
+  end
+
+  describe '#valid_user?' do
+    context 'when user_class is nil' do
+      before do
+        NiftyServices.config.user_class = nil
+      end
+
+      it do
+        invalid_user_error = NiftyServices::Errors::InvalidUser
+        expect { subject.send(:valid_user?) }.to raise_error(invalid_user_error)
+      end
+    end
+
+    context 'when user_class is present' do
+      before do
+        NiftyServices.config.user_class = Dummy
+      end
+
+      context 'and object is invalid' do
+        before { subject.instance_variable_set('@user', Dummy.new) }
+        it { expect(subject.send(:valid_user?)).to be true }
+      end
+
+      context 'and object is invalid' do
+        it { expect(subject.send(:valid_user?)).to be false }
+      end
+    end
   end
 end

@@ -3,7 +3,6 @@ module NiftyServices
   end
 
   class BaseCrudService < BaseService
-
     attr_reader :record
 
     class << self
@@ -12,22 +11,25 @@ module NiftyServices
           record_type
         end
 
-        record_alias = options.delete(:alias_name) || record_type.to_s.underscore
+        record_alias = options.delete(:alias_name)
+        record_alias ||= record_type.to_s.underscore
 
         alias_method record_alias.to_sym, :record
       end
 
       def include_concern(namespace, concern_type)
-        _module = "#{services_concern_namespace}::#{namespace.to_s.camelize}::#{concern_type.to_s.camelize}"
+        module_name = "#{services_concern_namespace}::
+                       #{namespace.to_s.camelize}::
+                       #{concern_type.to_s.camelize}"
 
-        self.include(_module.constantize)
+        self.include(module_name.constantize)
       end
 
       def services_concern_namespace
         NiftyServices.config.service_concerns_namespace
       end
 
-      alias_method :concern, :include_concern
+      alias concern include_concern
     end
 
     def initialize(record, user, options = {})
@@ -61,24 +63,9 @@ module NiftyServices
       filter_hash(record_attributes_hash, record_attributes_whitelist)
     end
 
-    alias :record_safe_attributes :record_allowed_attributes
+    alias record_safe_attributes record_allowed_attributes
 
     private
-    def array_values_from_hash(options, key, root = nil)
-      options = options.symbolize_keys
-
-      if root.present?
-        options = (options[root.to_sym] || {}).symbolize_keys
-      end
-
-      return [] unless options.key?(key.to_sym)
-
-      values = options[key.to_sym]
-
-      return values if values.is_a?(Array)
-
-      array_values_from_string(values)
-    end
 
     def invalid_user_error_key
       %s(users.not_found)
@@ -87,8 +74,6 @@ module NiftyServices
     def validate_user?
       true
     end
-
-    alias :array_values_from_params :array_values_from_hash
 
     def array_values_from_string(string)
       string.to_s.split(/\,/).map(&:squish)
