@@ -932,11 +932,19 @@ This can be even better if you move response code to a helper:
 ```ruby
 # helpers/users_helper.rb
 module UsersHelper
+  include GenericHelpers
 
   def response_for_user_create_service(service)
     success_response = { user: service.user, subscription: service.subscription }
     generic_response_for_service(service, success_response)
   end
+
+end
+```
+
+```ruby
+# helpers/generic_helper.rb
+module GenericHelper
 
   # THIS IS GREAT, you can use this method to standardize ALL of your
   # endpoints responses, THIS IS SO FUCKING COOL!
